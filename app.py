@@ -4,6 +4,7 @@ import os
 import streamlit as st
 from gemini_client import vraag_gemini, vraag_gemini_met_foto
 from recepten import toon_recepten
+from image_search import zoek_product_foto
 
 
 def _get_app_wachtwoord() -> str | None:
@@ -561,10 +562,12 @@ if st.session_state.resultaat is None:
             else:
                 with st.spinner("Gemini analyseert je maaltijd..."):
                     try:
-                        st.session_state.resultaat = vraag_gemini(maaltijd)
+                        data = vraag_gemini(maaltijd)
+                        data["foto_url"] = zoek_product_foto(data.get("product_naam", ""))
+                        st.session_state.resultaat = data
                         st.session_state.bron = "tekst"
                         st.session_state.laatste_foto = None
-                        voeg_toe_aan_geschiedenis(st.session_state.resultaat, "tekst", None)
+                        voeg_toe_aan_geschiedenis(data, "tekst", None)
                         st.rerun()
                     except Exception as e:
                         st.error(f"Er ging iets mis: {e}")
@@ -697,6 +700,8 @@ if st.session_state.resultaat:
     if st.session_state.bron == "foto" and st.session_state.laatste_foto:
         b64 = base64.b64encode(st.session_state.laatste_foto).decode()
         image_html = f'<img src="data:image/jpeg;base64,{b64}" alt="{data["product_naam"]}"/>'
+    elif data.get("foto_url"):
+        image_html = f'<img src="{data["foto_url"]}" alt="{data["product_naam"]}" referrerpolicy="no-referrer"/>'
     else:
         image_html = f'<div class="product-emoji">{data.get("emoji", "🍽️")}</div>'
 
