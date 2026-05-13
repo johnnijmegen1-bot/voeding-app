@@ -1,9 +1,20 @@
+import sys
+
+
 def zoek_product_foto(query: str) -> str | None:
     """Zoek een echte productfoto via DuckDuckGo. Geeft URL terug of None."""
     if not query or not query.strip():
         return None
     try:
-        from duckduckgo_search import DDGS
+        from ddgs import DDGS
+    except ImportError:
+        try:
+            from duckduckgo_search import DDGS
+        except ImportError as e:
+            print(f"[image_search] geen DDG package: {e}", file=sys.stderr)
+            return None
+
+    try:
         with DDGS() as ddgs:
             results = list(ddgs.images(
                 f"{query} gerecht",
@@ -16,6 +27,7 @@ def zoek_product_foto(query: str) -> str | None:
                 url = r.get("image")
                 if url and url.startswith("http"):
                     return url
-    except Exception:
-        return None
+            print(f"[image_search] geen resultaten voor '{query}'", file=sys.stderr)
+    except Exception as e:
+        print(f"[image_search] DDG fout: {type(e).__name__}: {e}", file=sys.stderr)
     return None
