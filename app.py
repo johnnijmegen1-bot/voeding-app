@@ -623,16 +623,15 @@ def render_gauge(score: float) -> str:
     radius = 76
     circumference = 2 * 3.14159 * radius
     dash = circumference * (max(0, min(10, score)) / 10)
-    return f"""
-    <svg width="200" height="200" viewBox="0 0 200 200">
-      <circle cx="100" cy="100" r="{radius}" stroke="#25402b" stroke-width="14" fill="none"/>
-      <circle cx="100" cy="100" r="{radius}" stroke="{kleur_hex}" stroke-width="14" fill="none"
-              stroke-linecap="round" stroke-dasharray="{dash} {circumference}"
-              transform="rotate(-90 100 100)"/>
-      <text x="100" y="100" text-anchor="middle" dy="0.35em" font-size="64" font-weight="800" fill="#ecf3ed">{int(round(score))}</text>
-      <text x="100" y="148" text-anchor="middle" font-size="16" fill="#a8bdad">/ 10</text>
-    </svg>
-    """
+    return (
+        f'<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">'
+        f'<circle cx="100" cy="100" r="{radius}" stroke="#25402b" stroke-width="14" fill="none"/>'
+        f'<circle cx="100" cy="100" r="{radius}" stroke="{kleur_hex}" stroke-width="14" fill="none" '
+        f'stroke-linecap="round" stroke-dasharray="{dash} {circumference}" transform="rotate(-90 100 100)"/>'
+        f'<text x="100" y="118" text-anchor="middle" font-size="64" font-weight="800" fill="#ecf3ed">{int(round(score))}</text>'
+        f'<text x="100" y="150" text-anchor="middle" font-size="16" fill="#a8bdad">/ 10</text>'
+        f'</svg>'
+    )
 
 
 def render_macro_mix(eiwit_g: float, koolh_g: float, vet_g: float) -> str:
@@ -692,7 +691,7 @@ if st.session_state.resultaat:
     )
 
     st.html('<div class="section-title">Gezondheidsscore</div>')
-    st.html(
+    st.markdown(
         f"""
         <div class="card">
           <div class="gauge-wrap">
@@ -700,7 +699,8 @@ if st.session_state.resultaat:
             <div class="gauge-text">{data['score_uitleg']}</div>
           </div>
         </div>
-        """
+        """,
+        unsafe_allow_html=True,
     )
 
     st.html('<div class="section-title">Macronutriënten</div>')
