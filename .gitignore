@@ -1,0 +1,9 @@
+# Geheimen — nooit uploaden!
+.env
+
+# Virtual environment — hoeft niet gedeeld te worden
+.venv/
+
+# Python cache-bestanden
+__pycache__/
+*.pyc
