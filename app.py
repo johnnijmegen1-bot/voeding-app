@@ -412,14 +412,11 @@ if st.session_state.resultaat is None:
                         st.error(f"Er ging iets mis: {e}")
 
     with tab_foto:
-        foto_cam = st.camera_input("Maak een foto", label_visibility="collapsed")
-        st.html('<div class="or-divider">— of —</div>')
-        foto_up = st.file_uploader(
-            "Upload bestand",
+        foto = st.file_uploader(
+            "Upload foto",
             type=["jpg", "jpeg", "png", "webp"],
             label_visibility="collapsed",
         )
-        foto = foto_cam or foto_up
         extra_context = st.text_input(
             "Extra context (optioneel)",
             placeholder="bv. grote portie, ongeveer 300g",
