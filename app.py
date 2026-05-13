@@ -235,6 +235,41 @@ st.html(
         flex-shrink: 0;
     }
 
+    /* Product hero (result top) */
+    .product-hero {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 1.4rem 1.4rem 1.2rem 1.4rem;
+        margin-bottom: 1rem;
+        text-align: center;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    }
+    .product-image {
+        width: 100%;
+        max-width: 280px;
+        aspect-ratio: 1;
+        margin: 0 auto 1rem auto;
+        border-radius: 16px;
+        overflow: hidden;
+        background: linear-gradient(135deg, var(--card-2) 0%, var(--card) 100%);
+        border: 1px solid var(--line);
+        display: flex; align-items: center; justify-content: center;
+    }
+    .product-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .product-emoji { font-size: 6.5rem; line-height: 1; }
+    .product-title {
+        font-size: 1.7rem; font-weight: 800; color: var(--text);
+        letter-spacing: -0.01em; line-height: 1.15;
+        margin-bottom: 0.4rem;
+    }
+    .product-desc {
+        font-size: 0.92rem; color: var(--muted);
+        line-height: 1.5; margin-bottom: 0.9rem;
+        max-width: 420px; margin-left: auto; margin-right: auto;
+    }
+    .product-hero .pill-row { justify-content: center; }
+
     .pill-row { display: flex; gap: 0.4rem; flex-wrap: wrap; }
     .pill {
         display: inline-flex; align-items: center; gap: 0.3rem;
@@ -659,26 +694,27 @@ def render_macro_mix(eiwit_g: float, koolh_g: float, vet_g: float) -> str:
 if st.session_state.resultaat:
     data = st.session_state.resultaat
 
-    thumb_html = ""
     if st.session_state.bron == "foto" and st.session_state.laatste_foto:
         b64 = base64.b64encode(st.session_state.laatste_foto).decode()
-        thumb_html = f'<img src="data:image/jpeg;base64,{b64}" class="thumb" alt="foto"/>'
+        image_html = f'<img src="data:image/jpeg;base64,{b64}" alt="{data["product_naam"]}"/>'
+    else:
+        image_html = f'<div class="product-emoji">{data.get("emoji", "🍽️")}</div>'
 
     bron_label = "📷 Foto" if st.session_state.bron == "foto" else "✍️ Tekst"
 
-    st.html(
+    st.markdown(
         f"""
-        <div class="card">
-          <div class="summary-head">
-            <div class="summary-title">{data['samenvatting']}</div>
-            {thumb_html}
-          </div>
+        <div class="product-hero">
+          <div class="product-image">{image_html}</div>
+          <div class="product-title">{data['product_naam']}</div>
+          <div class="product-desc">{data['samenvatting']}</div>
           <div class="pill-row">
             <span class="pill pill-accent">⚖️ {data['portie_schatting']}</span>
             <span class="pill pill-muted">{bron_label}</span>
           </div>
         </div>
-        """
+        """,
+        unsafe_allow_html=True,
     )
 
     st.html('<div class="section-title">Nutri-Score</div>')

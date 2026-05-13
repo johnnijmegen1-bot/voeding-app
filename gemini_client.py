@@ -27,6 +27,8 @@ Schat ook de portiegrootte in (in gram of stuks). De macronutriënten moeten geb
 
 Geef ALLEEN geldige JSON terug met EXACT deze structuur (geen extra tekst):
 {
+  "product_naam": "VERPLICHT - korte naam van het gerecht/product (max 40 tekens, bv. 'Appel' of 'Boterhammen met kaas')",
+  "emoji": "VERPLICHT - één emoji die het product het beste representeert (bv. 🍎 of 🥪)",
   "samenvatting": "korte zin over de maaltijd (VERPLICHT)",
   "portie_schatting": "bv. 'ongeveer 250 gram' of '1 bord van ~300g' (VERPLICHT)",
   "calorieen_kcal": getal (VERPLICHT),
@@ -89,6 +91,14 @@ def _zorg_voor_scores(data: dict) -> dict:
 
     data["nutri_score"] = nutri
     data["nutrient_score"] = max(1, min(10, score))
+
+    naam = (data.get("product_naam") or "").strip()
+    if not naam:
+        naam = (data.get("samenvatting") or "Maaltijd").split(".")[0][:40].strip()
+    data["product_naam"] = naam[:40]
+
+    if not (data.get("emoji") or "").strip():
+        data["emoji"] = "🍽️"
     return data
 
 def vraag_gemini(maaltijd: str) -> dict:
