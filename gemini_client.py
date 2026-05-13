@@ -21,27 +21,29 @@ def _get_api_key() -> str:
 
 genai.configure(api_key=_get_api_key())
 
-JSON_STRUCTUUR = """Schat ook de portiegrootte in (in gram of stuks). De macronutriënten moeten gebaseerd zijn op die geschatte portie.
+JSON_STRUCTUUR = """BELANGRIJK: ALLE velden zijn VERPLICHT. Sla geen velden over, laat niets leeg.
 
-Geef ALLEEN geldige JSON terug met deze structuur (geen extra tekst):
+Schat ook de portiegrootte in (in gram of stuks). De macronutriënten moeten gebaseerd zijn op die geschatte portie.
+
+Geef ALLEEN geldige JSON terug met EXACT deze structuur (geen extra tekst):
 {
-  "samenvatting": "korte zin over de maaltijd",
-  "portie_schatting": "bv. 'ongeveer 250 gram' of '1 bord van ~300g'",
-  "calorieen_kcal": getal,
-  "eiwitten_g": getal,
-  "koolhydraten_g": getal,
-  "vetten_g": getal,
-  "vezels_g": getal,
-  "suikers_g": getal,
+  "samenvatting": "korte zin over de maaltijd (VERPLICHT)",
+  "portie_schatting": "bv. 'ongeveer 250 gram' of '1 bord van ~300g' (VERPLICHT)",
+  "calorieen_kcal": getal (VERPLICHT),
+  "eiwitten_g": getal (VERPLICHT),
+  "koolhydraten_g": getal (VERPLICHT),
+  "vetten_g": getal (VERPLICHT),
+  "vezels_g": getal (VERPLICHT),
+  "suikers_g": getal (VERPLICHT),
   "vitamines_mineralen": {
     "vitamine_c_mg": getal,
     "calcium_mg": getal,
     "ijzer_mg": getal,
     "kalium_mg": getal
   },
-  "nutri_score": "A, B, C, D of E (officiële Nutri-Score volgens Europees systeem)",
-  "nutrient_score": getal van 1 tot 10,
-  "score_uitleg": "korte uitleg waarom deze score (zowel Nutri-Score als 1-10)",
+  "nutri_score": "VERPLICHT - kies ALTIJD een letter: A, B, C, D of E (officiële Nutri-Score)",
+  "nutrient_score": "VERPLICHT - geheel getal van 1 tot 10, geef ALTIJD een cijfer (1=zeer ongezond, 10=optimaal)",
+  "score_uitleg": "korte uitleg waarom deze scores (VERPLICHT)",
   "gezondere_alternatieven": ["alternatief 1", "alternatief 2", "alternatief 3"]
 }"""
 
@@ -52,13 +54,42 @@ model = genai.GenerativeModel(
 
 def _parse_json(text: str) -> dict:
     try:
-        return json.loads(text)
+        data = json.loads(text)
     except json.JSONDecodeError:
         start = text.find("{")
         end = text.rfind("}")
-        if start != -1 and end != -1:
-            return json.loads(text[start:end + 1])
-        raise
+        if start == -1 or end == -1:
+            raise
+        data = json.loads(text[start:end + 1])
+    return _zorg_voor_scores(data)
+
+
+def _zorg_voor_scores(data: dict) -> dict:
+    letter_naar_score = {"A": 9, "B": 7, "C": 5, "D": 3, "E": 1}
+    score_naar_letter = lambda s: "A" if s >= 9 else "B" if s >= 7 else "C" if s >= 5 else "D" if s >= 3 else "E"
+
+    nutri = (data.get("nutri_score") or "").strip().upper()
+    if nutri not in letter_naar_score:
+        nutri = ""
+
+    score_raw = data.get("nutrient_score")
+    try:
+        score = int(round(float(score_raw)))
+    except (TypeError, ValueError):
+        score = None
+
+    if score is None and nutri:
+        score = letter_naar_score[nutri]
+    elif score is None:
+        score = 5
+        nutri = "C"
+
+    if not nutri:
+        nutri = score_naar_letter(score)
+
+    data["nutri_score"] = nutri
+    data["nutrient_score"] = max(1, min(10, score))
+    return data
 
 def vraag_gemini(maaltijd: str) -> dict:
     prompt = (

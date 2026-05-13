@@ -273,8 +273,14 @@ st.html(
     }
 
     /* Score gauge */
-    .gauge-wrap { display: flex; align-items: center; gap: 1.1rem; }
-    .gauge-text { font-size: 0.92rem; color: var(--muted); line-height: 1.55; flex: 1; }
+    .gauge-wrap {
+        display: flex; flex-direction: column; align-items: center;
+        gap: 0.9rem; padding: 0.6rem 0;
+    }
+    .gauge-text {
+        font-size: 0.95rem; color: var(--text); line-height: 1.5;
+        text-align: center; max-width: 440px;
+    }
 
     /* Macros */
     .macro-row {
@@ -614,17 +620,17 @@ def render_gauge(score: float) -> str:
         kleur_hex = "#d4925a"
     else:
         kleur_hex = "#c75450"
-    radius = 46
+    radius = 76
     circumference = 2 * 3.14159 * radius
     dash = circumference * (max(0, min(10, score)) / 10)
     return f"""
-    <svg width="120" height="120" viewBox="0 0 120 120">
-      <circle cx="60" cy="60" r="{radius}" stroke="#25402b" stroke-width="10" fill="none"/>
-      <circle cx="60" cy="60" r="{radius}" stroke="{kleur_hex}" stroke-width="10" fill="none"
+    <svg width="200" height="200" viewBox="0 0 200 200">
+      <circle cx="100" cy="100" r="{radius}" stroke="#25402b" stroke-width="14" fill="none"/>
+      <circle cx="100" cy="100" r="{radius}" stroke="{kleur_hex}" stroke-width="14" fill="none"
               stroke-linecap="round" stroke-dasharray="{dash} {circumference}"
-              transform="rotate(-90 60 60)"/>
-      <text x="60" y="58" text-anchor="middle" font-size="28" font-weight="800" fill="#ecf3ed">{int(round(score))}</text>
-      <text x="60" y="80" text-anchor="middle" font-size="11" fill="#a8bdad">/ 10</text>
+              transform="rotate(-90 100 100)"/>
+      <text x="100" y="100" text-anchor="middle" dy="0.35em" font-size="64" font-weight="800" fill="#ecf3ed">{int(round(score))}</text>
+      <text x="100" y="148" text-anchor="middle" font-size="16" fill="#a8bdad">/ 10</text>
     </svg>
     """
 
