@@ -1,9 +1,53 @@
 import base64
+import datetime
+import os
 import streamlit as st
 from gemini_client import vraag_gemini, vraag_gemini_met_foto
 from recepten import toon_recepten
 
-st.set_page_config(page_title="Voeding-app", page_icon="🥗", layout="centered")
+
+def _get_app_wachtwoord() -> str | None:
+    pw = os.getenv("APP_WACHTWOORD")
+    if pw:
+        return pw
+    try:
+        return st.secrets["APP_WACHTWOORD"]
+    except Exception:
+        return None
+
+
+APP_WACHTWOORD = _get_app_wachtwoord()
+
+st.set_page_config(page_title="Voeding", page_icon="🥗", layout="centered")
+
+# ── PWA icoon + naam voor "Zet op beginscherm" op iPhone ────────────────
+ICON_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a3520"/>
+      <stop offset="100%" stop-color="#0e1f12"/>
+    </linearGradient>
+  </defs>
+  <rect width="180" height="180" rx="42" fill="url(#bg)"/>
+  <ellipse cx="90" cy="98" rx="48" ry="8" fill="#a67c52"/>
+  <path d="M 45 95 Q 90 135 135 95 L 130 102 Q 90 138 50 102 Z" fill="#c89c70"/>
+  <circle cx="75" cy="85" r="11" fill="#66bb6a"/>
+  <circle cx="95" cy="82" r="12" fill="#2e7d32"/>
+  <circle cx="108" cy="90" r="9" fill="#85bb2f"/>
+  <circle cx="82" cy="78" r="7" fill="#85bb2f"/>
+  <circle cx="100" cy="92" r="5" fill="#c75450"/>
+</svg>"""
+_icon_uri = "data:image/svg+xml;base64," + base64.b64encode(ICON_SVG.encode()).decode()
+st.html(
+    f"""
+    <link rel="apple-touch-icon" href="{_icon_uri}">
+    <link rel="icon" type="image/svg+xml" href="{_icon_uri}">
+    <meta name="apple-mobile-web-app-title" content="Voeding">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0e1f12">
+    """
+)
 
 # ── State ──────────────────────────────────────────────────────────────
 if "resultaat" not in st.session_state:
@@ -14,12 +58,29 @@ if "laatste_foto" not in st.session_state:
     st.session_state.laatste_foto = None
 if "pagina" not in st.session_state:
     st.session_state.pagina = "analyse"
+if "geschiedenis" not in st.session_state:
+    st.session_state.geschiedenis = []
 
 
 def reset_resultaat():
     st.session_state.resultaat = None
     st.session_state.bron = None
     st.session_state.laatste_foto = None
+
+
+def voeg_toe_aan_geschiedenis(data: dict, bron: str, foto: bytes | None):
+    st.session_state.geschiedenis.insert(0, {
+        "id": datetime.datetime.now().isoformat(),
+        "tijd": datetime.datetime.now().strftime("%H:%M"),
+        "data": data,
+        "bron": bron,
+        "foto": foto,
+    })
+    st.session_state.geschiedenis = st.session_state.geschiedenis[:20]
+
+
+def wis_geschiedenis():
+    st.session_state.geschiedenis = []
 
 
 # ── Styling ────────────────────────────────────────────────────────────
@@ -331,6 +392,33 @@ st.html(
     }
     .recipe-link { font-size: 0.82rem; color: var(--accent); font-weight: 600; }
 
+    /* Geschiedenis */
+    .hist-row {
+        display: flex; align-items: center; gap: 0.7rem;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 0.7rem 0.9rem;
+        margin-bottom: 0.45rem;
+    }
+    .hist-ns {
+        width: 32px; height: 32px;
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-weight: 800;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        flex-shrink: 0;
+    }
+    .hist-body { flex: 1; min-width: 0; }
+    .hist-meta {
+        font-size: 0.72rem; color: var(--muted);
+        margin-bottom: 0.15rem;
+    }
+    .hist-summary {
+        font-size: 0.9rem; color: var(--text); font-weight: 500;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
     /* Radio sub-label inside foto-tab */
     .or-divider {
         text-align: center;
@@ -343,6 +431,34 @@ st.html(
     </style>
     """
 )
+
+# ── Login gate ─────────────────────────────────────────────────────────
+if not st.session_state.get("ingelogd"):
+    st.html(
+        """
+        <div class="hero">
+          <div class="hero-logo">🥗</div>
+          <div class="hero-text">
+            <div class="hero-name">Voeding-app</div>
+            <div class="hero-tag">Voer het wachtwoord in om verder te gaan.</div>
+          </div>
+        </div>
+        """
+    )
+    with st.form("login_form", clear_on_submit=False):
+        pw = st.text_input("Wachtwoord", type="password", placeholder="Wachtwoord", label_visibility="collapsed")
+        ok = st.form_submit_button("Open", type="primary", use_container_width=True)
+        if ok:
+            if APP_WACHTWOORD is None:
+                st.error("Wachtwoord is niet geconfigureerd. Voeg APP_WACHTWOORD toe aan .env (lokaal) of Streamlit Secrets (online).")
+            elif pw == APP_WACHTWOORD:
+                st.session_state.ingelogd = True
+                st.rerun()
+            else:
+                st.error("Onjuist wachtwoord.")
+    st.html('<div class="disclaimer">Toegang beperkt — neem contact op met de eigenaar voor het wachtwoord.</div>')
+    st.stop()
+
 
 # ── Header ─────────────────────────────────────────────────────────────
 st.html(
@@ -407,6 +523,7 @@ if st.session_state.resultaat is None:
                         st.session_state.resultaat = vraag_gemini(maaltijd)
                         st.session_state.bron = "tekst"
                         st.session_state.laatste_foto = None
+                        voeg_toe_aan_geschiedenis(st.session_state.resultaat, "tekst", None)
                         st.rerun()
                     except Exception as e:
                         st.error(f"Er ging iets mis: {e}")
@@ -431,9 +548,51 @@ if st.session_state.resultaat is None:
                         st.session_state.resultaat = vraag_gemini_met_foto(foto_bytes, extra_context)
                         st.session_state.bron = "foto"
                         st.session_state.laatste_foto = foto_bytes
+                        voeg_toe_aan_geschiedenis(st.session_state.resultaat, "foto", foto_bytes)
                         st.rerun()
                     except Exception as e:
                         st.error(f"Er ging iets mis: {e}")
+
+# ── Geschiedenis (alleen tonen op input-view) ──────────────────────────
+NUTRI_KLEUREN_HIST = {"A": "#038141", "B": "#85bb2f", "C": "#fecb02", "D": "#ee8100", "E": "#e63e11"}
+
+
+def _laad_uit_geschiedenis(entry: dict):
+    st.session_state.resultaat = entry["data"]
+    st.session_state.bron = entry["bron"]
+    st.session_state.laatste_foto = entry["foto"]
+
+
+if st.session_state.resultaat is None and st.session_state.geschiedenis:
+    hist_col1, hist_col2 = st.columns([4, 1])
+    with hist_col1:
+        st.html('<div class="section-title">Recent</div>')
+    with hist_col2:
+        st.button("🗑 Wis", key="wis_hist", on_click=wis_geschiedenis, type="secondary", use_container_width=True)
+
+    for entry in st.session_state.geschiedenis:
+        d = entry["data"]
+        nutri = (d.get("nutri_score") or "?").upper()
+        kleur = NUTRI_KLEUREN_HIST.get(nutri, "#555")
+        bron_icon = "📷" if entry["bron"] == "foto" else "✍️"
+        kcal = d.get("calorieen_kcal", "?")
+
+        row_col, btn_col = st.columns([5, 1])
+        with row_col:
+            st.html(
+                f"""
+                <div class="hist-row">
+                  <div class="hist-ns" style="background:{kleur}">{nutri}</div>
+                  <div class="hist-body">
+                    <div class="hist-meta">{bron_icon} {entry['tijd']} · {kcal} kcal</div>
+                    <div class="hist-summary">{d['samenvatting']}</div>
+                  </div>
+                </div>
+                """
+            )
+        with btn_col:
+            st.button("Open", key=f"hist_{entry['id']}", on_click=_laad_uit_geschiedenis, args=(entry,), use_container_width=True)
+
 
 # ── Resultaat ──────────────────────────────────────────────────────────
 NUTRI_KLEUREN = {"A": "#038141", "B": "#85bb2f", "C": "#fecb02", "D": "#ee8100", "E": "#e63e11"}
@@ -573,3 +732,11 @@ if st.session_state.resultaat:
 st.html(
     '<div class="disclaimer">Schattingen door AI — niet voor medisch gebruik.</div>'
 )
+
+
+def _uitloggen():
+    for k in ["ingelogd", "resultaat", "bron", "laatste_foto", "geschiedenis"]:
+        st.session_state.pop(k, None)
+
+
+st.button("Uitloggen", key="uitloggen_btn", on_click=_uitloggen, type="secondary", use_container_width=True)
